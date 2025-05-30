@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+
+{% block title %}Welcome{% endblock %}
+
+{% block content %}
+    <h1>Credit Card Recommender</h1>
+    <form action="{{ url_for('main.recommend') }}" method="post">
+        <label for="category">Select Purchase Category:</label>
+        <select name="category" id="category">
+            {% for category in categories %}
+                <option value="{{ category.name }}">{{ category.name }}</option>
+            {% else %}
+                <option value="">No categories available</option>
+            {% endfor %}
+        </select>
+        <button type="submit">Get Recommendation</button>
+    </form>
+
+    <hr>
+    <p><a href="{{ url_for('main.add_sample_data') }}">Initialize Sample Card Data (Run Once)</a></p>
+
+    <div id="recommendation-result">
+        </div>
+{% endblock %}

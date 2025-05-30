@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+
+{% block title %}Recommendation for {{ category_name }}{% endblock %}
+
+{% block content %}
+    <h2>Recommendation for: {{ category_name }}</h2>
+    {% if recommendation and 'error' not in recommendation %}
+        <div>
+            <h3>Best Option: {{ recommendation.best_card_name }} ({{ recommendation.issuer }})</h3>
+            <p><strong>Annual Fee:</strong> ${{ recommendation.annual_fee }}</p>
+            <p><strong>Details:</strong> {{ recommendation.reward_details }}</p>
+            <p><strong>Benefits:</strong> {{ recommendation.benefits }}</p>
+            {% if recommendation.img_url %}<img src="{{ recommendation.img_url }}" alt="{{ recommendation.best_card_name }}" style="max-width: 150px;">{% endif %}
+        </div>
+        <hr>
+        <h4>Other Eligible Cards:</h4>
+        {% if eligible_cards %}
+            <ul>
+            {% for card in eligible_cards %}
+                <li>
+                    <strong>{{ card.name }} ({{card.issuer}})</strong> - {{ card.reward_rate*100:.0f}}%
+                    (Fee: ${{card.annual_fee}})
+                    <br><em>{{card.benefits}}</em>
+                </li>
+            {% endfor %}
+            </ul>
+        {% else %}
+            <p>No other specific cards found with high rewards for this category.</p>
+        {% endif %}
+    {% elif recommendation and 'message' in recommendation %}
+         <p>{{ recommendation.message }}</p>
+    {% else %}
+        <p>Could not retrieve a recommendation. {{ recommendation.get("error", "") }}</p>
+    {% endif %}
+    <a href="{{ url_for('main.index') }}">Try another category</a>
+{% endblock %}
