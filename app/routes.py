@@ -17,36 +17,62 @@ main_routes = Blueprint('main', __name__)
 
 @main_routes.route('/', methods=['GET'])
 def index():
-    categories = PurchaseCategory.query.all()
+    # categories = PurchaseCategory.query.all()
+    # return render_template('index.html', categories=categories)
+    try:
+        categories = PurchaseCategory.query.all()
+    except Exception as e:
+        current_app.logger.error(f"Error fetching categories for index page: {e}")
+        categories = [] # Prevent error on template if DB query fails
     return render_template('index.html', categories=categories)
 
-@main_routes.route('/recommend', methods=['POST', 'GET']) # Allow GET for easy testing via URL
+
+
+@main_routes.route('/recommend', methods=['POST', 'GET'])
 def recommend():
+    category_name = ""
     if request.method == 'POST':
         category_name = request.form.get('category')
-    else: # GET request
+    else: # GET request for easier testing or direct links
         category_name = request.args.get('category')
 
     if not category_name:
-        return jsonify({"error": "Category not provided."}), 400
+        return render_template('recommend.html', 
+                               error_message="No purchase category was selected. Please try again.", 
+                               category_name="N/A")
 
-    # user_id = session.get('user_id') # If you have user login
-    user_id = None # Placeholder for now
+    # user_id = session.get('user_id') # For when user login is implemented
+    user_id = None  # Placeholder
     
-    recommendation, eligible_cards = get_card_recommendation(category_name, user_id)
+    # Call the updated service function
+    best_card_result, eligible_cards_result = get_card_recommendation(category_name, user_id)
 
-    if "error" in recommendation:
-        return jsonify(recommendation), 404
-    
-    # For an HTML response:
-    # return render_template('recommend.html', recommendation=recommendation, category_name=category_name, eligible_cards=eligible_cards)
-    
-    # For an API-like JSON response:
-    return jsonify({
-        "query_category": category_name,
-        "best_recommendation": recommendation,
-        "other_eligible_cards": eligible_cards
-    })
+    # Prepare context for the template
+    template_context = {
+        "category_name": category_name,
+        "best_card": None,
+        "eligible_cards": [],
+        "info_message": None,
+        "error_message": None
+    }
+
+    if isinstance(best_card_result, dict) and "error" in best_card_result:
+        template_context["error_message"] = best_card_result["error"]
+    elif isinstance(best_card_result, dict) and "message" in best_card_result: # No specific best card, but a general message
+        template_context["info_message"] = best_card_result["message"]
+        # eligible_cards_result might be an empty list or contain general cards if logic is expanded
+        template_context["eligible_cards"] = eligible_cards_result if isinstance(eligible_cards_result, list) else []
+    elif best_card_result: # We have a best card
+        template_context["best_card"] = best_card_result
+        template_context["eligible_cards"] = eligible_cards_result
+    elif isinstance(eligible_cards_result, dict) and "message" in eligible_cards_result: # No eligible cards, service returned a message in second param
+         template_context["info_message"] = eligible_cards_result["message"]
+    else: # Fallback for unexpected structure
+        template_context["error_message"] = "Could not retrieve a recommendation at this time."
+
+    return render_template('recommend.html', **template_context)
+
+
 
 @main_routes.route('/add_card_data', methods=['GET'])
 def add_sample_data():
@@ -64,28 +90,53 @@ def add_sample_data():
         # --- Add Sample Cards ---
         cards_data = [
             {
-                "name": "Super Diner Card", "issuer": "Bank A", "annual_fee": 95.0,
-                "reward_rules": json.dumps({"dining": 0.04, "online shopping": 0.03, "groceries": 0.01}),
-                "benefits_summary": "Bonus points at restaurants, travel credits",
-                "img_url": "https://via.placeholder.com/150/FF0000/FFFFFF?Text=SuperDiner"
+                "name": "Chase Freedom Unlimited",
+                "issuer": "Chase",
+                "annual_fee": 0.0,
+                "reward_rules": json.dumps({
+                    "All": 0.015,
+                    "Dining": 0.03,
+                    "Travel": 0.05
+                }),
+                "benefits_summary": "1.5% on all purchases; 3% on dining; 5% on travel booked through Chase.",
+                "img_url": "https://www.chase.com/content/services/structured-image/image.mobile.jpg/chase-ux/bucket/secondary/card-freedom-unltd.jpg"
             },
             {
-                "name": "TravelMaster Gold", "issuer": "Bank B", "annual_fee": 250.0,
-                "reward_rules": json.dumps({"travel": 0.05, "dining": 0.02}),
-                "benefits_summary": "Airport lounge access, travel insurance",
-                "img_url": "https://via.placeholder.com/150/0000FF/FFFFFF?Text=TravelMaster"
+                "name": "Blue Cash Preferred® from American Express",
+                "issuer": "Amex",
+                "annual_fee": 95.0,
+                "reward_rules": json.dumps({
+                    "Groceries": 0.06,
+                    "Streaming": 0.06,
+                    "All": 0.01
+                }),
+                "benefits_summary": "6% at U.S. supermarkets (up to $6k/year), 6% on select streaming; 1% other.",
+                "img_url": "https://icm.aexp-static.com/acquisition/card-art/NUS000000264_480x304_straight_withname.png"
             },
             {
-                "name": "Everyday Saver", "issuer": "Credit Union C", "annual_fee": 0.0,
-                "reward_rules": json.dumps({"groceries": 0.06, "gas": 0.03}),
-                "benefits_summary": "Cashback on essentials",
-                "img_url": "https://via.placeholder.com/150/00FF00/000000?Text=EverydaySaver"
+                "name": "Capital One Savor Cash Rewards",
+                "issuer": "Capital One",
+                "annual_fee": 95.0,
+                "reward_rules": json.dumps({
+                    "Dining": 0.04,
+                    "Entertainment": 0.04,
+                    "Streaming": 0.04,
+                    "Groceries": 0.03,
+                    "All": 0.01
+                }),
+                "benefits_summary": "4% on dining, entertainment, streaming; 3% at grocery; 1% all else.",
+                "img_url": "https://ecm.capitalone.com/WCM/card/products/new-savor-card-art/mobile.png"
             },
             {
-                "name": "Flat Rewards Plus", "issuer": "Bank D", "annual_fee": 0.0,
-                "reward_rules": json.dumps({"all_purchases": 0.02}), # Example of a flat-rate card
-                "benefits_summary": "Simple 2% on everything",
-                "img_url": "https://via.placeholder.com/150/FFFF00/000000?Text=FlatRewards"
+                "name": "Discover it® Cash Back",
+                "issuer": "Discover",
+                "annual_fee": 0.0,
+                "reward_rules": json.dumps({
+                    "Rotating": 0.05,
+                    "All": 0.01
+                }),
+                "benefits_summary": "5% in rotating quarterly categories (up to $1.5k/quarter); 1% on everything else.",
+                "img_url": "https://www.discover.com/content/dam/discover/en_us/credit-cards/card-acquisitions/grey-redesign/global/images/cardart/cardart-student-iridescent-390-243.png"
             }
         ]
 
@@ -111,6 +162,8 @@ def add_sample_data():
         db.session.rollback()
         current_app.logger.error(f"Error adding sample data: {e}", exc_info=True)
         return jsonify({"error": "An internal error occurred while adding sample data. Check server logs.", "details": str(e)}), 500
+
+
 
 # Helper method for get_or_create pattern (add this to models.py or a utils.py)
 # In models.py:

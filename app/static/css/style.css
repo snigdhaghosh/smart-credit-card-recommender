@@ -12,3 +12,90 @@ nav a {
     margin-right: 15px;
     text-decoration: none;
 }
+
+/* Recommendation Page Styles */
+.recommendation-page h2 {
+    color: #333;
+    border-bottom: 2px solid #eee;
+    padding-bottom: 10px;
+}
+.recommendation-page h3 {
+    color: #555;
+    margin-top: 30px;
+}
+
+.card-recommendation {
+    background-color: #f9f9f9;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    padding: 15px;
+    margin-bottom: 15px;
+    overflow: auto; /* Clear floats */
+}
+
+.card-recommendation.best-card {
+    background-color: #e7f7e7;
+    border-left: 5px solid #4CAF50;
+}
+
+.card-recommendation h4 {
+    margin-top: 0;
+    color: #2c3e50;
+}
+
+.card-recommendation p {
+    margin-bottom: 8px;
+    font-size: 0.95em;
+}
+
+.card-image {
+    float: right;
+    max-width: 100px; /* Adjust as needed */
+    max-height: 63px; /* Standard credit card aspect ratio (approx 1.58) */
+    margin-left: 15px;
+    border-radius: 3px;
+    border: 1px solid #ccc;
+}
+
+.reward-rate {
+    font-weight: bold;
+    color: #27ae60; /* Green for positive rewards */
+}
+
+.alert {
+    padding: 15px;
+    margin-bottom: 20px;
+    border: 1px solid transparent;
+    border-radius: 4px;
+}
+.alert-danger {
+    color: #a94442;
+    background-color: #f2dede;
+    border-color: #ebccd1;
+}
+.alert-info {
+    color: #31708f;
+    background-color: #d9edf7;
+    border-color: #bce8f1;
+}
+
+.btn {
+    display: inline-block;
+    padding: 6px 12px;
+    margin-bottom: 0;
+    font-size: 14px;
+    font-weight: 400;
+    line-height: 1.42857143;
+    text-align: center;
+    white-space: nowrap;
+    vertical-align: middle;
+    cursor: pointer;
+    border: 1px solid transparent;
+    border-radius: 4px;
+    text-decoration: none;
+}
+.btn-primary {
+    color: #fff;
+    background-color: #337ab7;
+    border-color: #2e6da4;
+}

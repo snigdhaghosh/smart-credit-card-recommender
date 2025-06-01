@@ -1,22 +1,3 @@
-# from . import db
-
-# class CreditCard(db.Model):
-#     id = db.Column(db.Integer, primary_key=True)
-#     name = db.Column(db.String(100), unique=True, nullable=False)
-#     categories = db.Column(db.String(200), nullable=False)
-#     reward_rate = db.Column(db.Float, nullable=False)
-#     description = db.Column(db.Text)
-
-#     def to_dict(self):
-#         return {
-#             "id": self.id,
-#             "name": self.name,
-#             "categories": self.categories.split(','),
-#             "reward_rate": self.reward_rate,
-#             "description": self.description
-#         }
-
-
 from . import db # Imports the db object created in __init__.py
 from datetime import datetime
 
@@ -32,8 +13,10 @@ class User(db.Model):
     def __repr__(self):
         return f'<User {self.username}>'
 
+
 class Card(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
+
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     name = db.Column(db.String(100), nullable=False, unique=True)
     issuer = db.Column(db.String(100))
     annual_fee = db.Column(db.Float, default=0.0)
@@ -48,6 +31,8 @@ class Card(db.Model):
 
     def __repr__(self):
         return f'<Card {self.name}>'
+
+
 
 # Association table for User and Cards (Many-to-Many if a card can be owned by many users)
 # Or simple one-to-many if UserOwnedCard stores unique instances of a card per user.
@@ -64,6 +49,8 @@ class UserOwnedCard(db.Model):
 
     def __repr__(self):
         return f'<UserOwnedCard User {self.user_id} owns Card {self.card_id}>'
+
+
 
 class PurchaseCategory(db.Model):
     id = db.Column(db.Integer, primary_key=True)

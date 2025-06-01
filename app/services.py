@@ -1,4 +1,5 @@
 import json
+from flask import current_app
 from .models import Card, UserOwnedCard, PurchaseCategory
 
 def get_card_recommendation(purchase_category_name, user_id=None):
@@ -6,73 +7,106 @@ def get_card_recommendation(purchase_category_name, user_id=None):
     Recommends the best card for a given purchase category.
     Phase 1: Simple rule-based logic.
     """
-    # Find the purchase category object
-    category = PurchaseCategory.query.filter_by(name=purchase_category_name).first()
-    if not category:
-        return {"error": "Purchase category not found."}, None
 
-    best_card = None
-    max_reward_rate = -1.0
-    recommendation_reason = ""
+    category_obj = PurchaseCategory.query.filter_by(name=purchase_category_name).first()
+    if not category_obj:
+        current_app.logger.warn(f"Purchase category '{purchase_category_name}' not found in database.")
+        return {"error": f"Purchase category '{purchase_category_name}' not found."}, []
 
-    # Get all cards
-    all_cards = Card.query.all()
-    eligible_cards = []
+    best_card_details_dict = None
+    highest_effective_reward_score = -1.0  # Allows any positive reward to be initially better
 
-    for card in all_cards:
+    eligible_cards_list = []
+    all_cards_from_db = Card.query.all()
+
+    if not all_cards_from_db:
+        current_app.logger.info("No cards found in the database.")
+        return {"message": "No cards available in the system yet."}, []
+
+    for card_from_db in all_cards_from_db:
         try:
-            rules = json.loads(card.reward_rules) if card.reward_rules else {}
+            rules = json.loads(card_from_db.reward_rules) if card_from_db.reward_rules else {}
         except json.JSONDecodeError:
-            rules = {} # Skip card or log error if rules are malformed
+            current_app.logger.error(f"Malformed reward_rules JSON for card: {card_from_db.name} (ID: {card_from_db.id})")
+            rules = {} # Treat as no specific rules
 
-        # Check generic category match (e.g. "dining" in rules)
-        # More sophisticated matching can be added later (e.g., if category.name is a sub-category)
-        reward_rate = rules.get(purchase_category_name.lower(), 0.0) # Default to 0% if category not in rules
+        # Get reward rate for the specific category (e.g., "dining")
+        # Ensure category_name from rules is compared case-insensitively or consistently
+        # specific_reward_rate = rules.get(purchase_category_name.lower(), 0.0)
 
-        # Consider annual fee by calculating an 'effective reward'
-        # This is a placeholder; real calculation is more complex (needs estimated spend)
-        # For now, let's just prioritize higher raw reward rate
-        effective_reward = reward_rate # - (card.annual_fee / (12 * some_assumed_monthly_spend_in_category_or_total))
-
-        if effective_reward > max_reward_rate:
-            max_reward_rate = effective_reward
-            best_card = card
-            recommendation_reason = f"Offers {reward_rate*100:.0f}% back on {purchase_category_name}."
+        specific_reward_rate = 0.0
+        # Normalize input purchase category name to lowercase once
+        normalized_input_category_name = purchase_category_name.lower()
         
-        if reward_rate > 0: # Only consider cards that offer some reward for the category
-             eligible_cards.append({
-                "name": card.name,
-                "issuer": card.issuer,
-                "reward_rate": reward_rate,
-                "annual_fee": card.annual_fee,
-                "benefits": card.benefits_summary,
-                "img_url": card.img_url
-            })
+        for rule_key, rate_value in rules.items():
+            if rule_key.lower() == normalized_input_category_name:
+                specific_reward_rate = rate_value
+                break 
+        
+        # Get a general or 'all purchases' rate if specific is not found or is lower
+        # general_reward_rate = rules.get("all_purchases", 0.0) # Assuming "all_purchases" key in your JSON
+        general_reward_rate = rules.get("All", 0.0) # Use "All" as per your data
 
 
-    # If user_id is provided, check if they own any of the top cards
-    # For now, this just returns the single best card found based on raw reward rate
-    if user_id:
-        owned_cards = UserOwnedCard.query.filter_by(user_id=user_id).all()
-        owned_card_ids = [oc.card_id for oc in owned_cards]
-        if best_card and best_card.id in owned_card_ids:
-            recommendation_reason += " (You own this card!)"
-        # Further logic: is an owned card "good enough"? or suggest a better non-owned card?
+        # The actual reward rate for this card for this category
+        # For simplicity, if a specific category reward exists, use it, else use general.
+        # A more complex logic could take the max, or layer them.
+        if specific_reward_rate > 0:
+            actual_reward_rate_for_category = specific_reward_rate
+        else:
+            actual_reward_rate_for_category = general_reward_rate
+        
+        if actual_reward_rate_for_category <= 0: # Card doesn't offer meaningful rewards for this category
+            continue
 
-    if not best_card:
-        return {"message": f"No specific card found with high rewards for {purchase_category_name}. Consider a general rewards card."}, []
+        # Simple scoring for "effectiveness" - can be greatly improved later.
+        # Higher reward is better. Lower annual fee is better for tie-breaking.
+        # Current score is just the reward rate.
+        current_card_score = actual_reward_rate_for_category
+
+        # Prepare card information for the eligible list
+        card_info_for_list = {
+            "id": card_from_db.id,
+            "name": card_from_db.name,
+            "issuer": card_from_db.issuer,
+            "reward_rate_for_category": actual_reward_rate_for_category, # The rate for the queried category
+            "reward_rules_summary_text": f"Offers {actual_reward_rate_for_category*100:.0f}% for {purchase_category_name}. Full rules: {rules}", # Example summary
+            "full_reward_rules": rules, # Pass all rules for detailed display if needed
+            "annual_fee": card_from_db.annual_fee,
+            "benefits": card_from_db.benefits_summary,
+            "img_url": card_from_db.img_url
+        }
+        eligible_cards_list.append(card_info_for_list)
+
+        # Determine the "best" card based on score and then annual fee as a tie-breaker
+        if current_card_score > highest_effective_reward_score:
+            highest_effective_reward_score = current_card_score
+            best_card_details_dict = card_info_for_list
+        elif current_card_score == highest_effective_reward_score:
+            if best_card_details_dict and card_from_db.annual_fee < best_card_details_dict.get('annual_fee', float('inf')):
+                best_card_details_dict = card_info_for_list # Prefer lower annual fee on tie
+
+        # current_app.logger.info(f"card: {card_from_db.name}")  # Debugging output
+
+    if not eligible_cards_list: # No cards offered any rewards for this category
+        return {"message": f"No cards found offering specific rewards for '{purchase_category_name}'. Consider a general rewards card."}, []
     
-    # Sort eligible_cards by reward_rate descending
-    eligible_cards.sort(key=lambda x: x['reward_rate'], reverse=True)
+    # Sort all eligible cards by their reward rate for the category (desc), then by annual fee (asc)
+    eligible_cards_list.sort(key=lambda x: (x['reward_rate_for_category'], -x['annual_fee']), reverse=True)
+    
+    # The best card is now the first one in the sorted list if any are eligible
+    if eligible_cards_list and not best_card_details_dict: # Fallback if tie-breaking logic didn't set one
+        best_card_details_dict = eligible_cards_list[0]
+    elif not eligible_cards_list and best_card_details_dict: # This case should not happen if logic is correct
+        pass # best_card_details_dict is already set
 
-    return {
-        "best_card_name": best_card.name,
-        "issuer": best_card.issuer,
-        "annual_fee": best_card.annual_fee,
-        "reward_details": recommendation_reason,
-        "benefits": best_card.benefits_summary,
-        "img_url": best_card.img_url
-    }, eligible_cards # Return the single best and a list of other eligible cards
+    # Later: if user_id is provided, you can check if best_card_details_dict or others are owned
+    # For example, add a key: best_card_details_dict['is_owned_by_user'] = True/False
+
+    return best_card_details_dict, eligible_cards_list
+
+
+
 
 # --- Placeholder for AI services ---
 def get_llm_assisted_info(card_name):
