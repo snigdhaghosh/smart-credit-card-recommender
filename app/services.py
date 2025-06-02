@@ -7,7 +7,6 @@ def get_card_recommendation(purchase_category_name, user_id=None):
     Recommends the best card for a given purchase category.
     Phase 1: Simple rule-based logic.
     """
-
     category_obj = PurchaseCategory.query.filter_by(name=purchase_category_name).first()
     if not category_obj:
         current_app.logger.warn(f"Purchase category '{purchase_category_name}' not found in database.")
@@ -22,6 +21,12 @@ def get_card_recommendation(purchase_category_name, user_id=None):
     if not all_cards_from_db:
         current_app.logger.info("No cards found in the database.")
         return {"message": "No cards available in the system yet."}, []
+    
+    owned_card_ids_set = set()
+    if user_id:
+        owned_cards_for_user = UserOwnedCard.query.filter_by(user_id=user_id).all()
+        owned_card_ids_set = {uoc.card_id for uoc in owned_cards_for_user}
+    
 
     for card_from_db in all_cards_from_db:
         try:
@@ -29,10 +34,6 @@ def get_card_recommendation(purchase_category_name, user_id=None):
         except json.JSONDecodeError:
             current_app.logger.error(f"Malformed reward_rules JSON for card: {card_from_db.name} (ID: {card_from_db.id})")
             rules = {} # Treat as no specific rules
-
-        # Get reward rate for the specific category (e.g., "dining")
-        # Ensure category_name from rules is compared case-insensitively or consistently
-        # specific_reward_rate = rules.get(purchase_category_name.lower(), 0.0)
 
         specific_reward_rate = 0.0
         # Normalize input purchase category name to lowercase once
@@ -63,6 +64,8 @@ def get_card_recommendation(purchase_category_name, user_id=None):
         # Higher reward is better. Lower annual fee is better for tie-breaking.
         # Current score is just the reward rate.
         current_card_score = actual_reward_rate_for_category
+        is_owned = card_from_db.id in owned_card_ids_set # Check if owned
+
 
         # Prepare card information for the eligible list
         card_info_for_list = {
@@ -74,7 +77,8 @@ def get_card_recommendation(purchase_category_name, user_id=None):
             "full_reward_rules": rules, # Pass all rules for detailed display if needed
             "annual_fee": card_from_db.annual_fee,
             "benefits": card_from_db.benefits_summary,
-            "img_url": card_from_db.img_url
+            "img_url": card_from_db.img_url,
+            "is_owned": is_owned # Add the owned flag
         }
         eligible_cards_list.append(card_info_for_list)
 
@@ -83,16 +87,21 @@ def get_card_recommendation(purchase_category_name, user_id=None):
             highest_effective_reward_score = current_card_score
             best_card_details_dict = card_info_for_list
         elif current_card_score == highest_effective_reward_score:
-            if best_card_details_dict and card_from_db.annual_fee < best_card_details_dict.get('annual_fee', float('inf')):
-                best_card_details_dict = card_info_for_list # Prefer lower annual fee on tie
+            # Tie-breaking: 1. Owned card, 2. Lower annual fee
+            is_current_best_owned = best_card_details_dict.get('is_owned', False) if best_card_details_dict else False
+            if is_owned and not is_current_best_owned: # Prefer owned card in a tie
+                best_card_details_dict = card_info_for_list
+            elif (is_owned == is_current_best_owned) and \
+                (best_card_details_dict and card_from_db.annual_fee < best_card_details_dict.get('annual_fee', float('inf'))):
+                best_card_details_dict = card_info_for_list # Then prefer lower annual fee
 
         # current_app.logger.info(f"card: {card_from_db.name}")  # Debugging output
 
     if not eligible_cards_list: # No cards offered any rewards for this category
         return {"message": f"No cards found offering specific rewards for '{purchase_category_name}'. Consider a general rewards card."}, []
     
-    # Sort all eligible cards by their reward rate for the category (desc), then by annual fee (asc)
-    eligible_cards_list.sort(key=lambda x: (x['reward_rate_for_category'], -x['annual_fee']), reverse=True)
+    # Sort all eligible cards: Owned cards with high rewards first, then by reward rate, then by annual fee
+    eligible_cards_list.sort(key=lambda x: (x['is_owned'], x['reward_rate_for_category'], -x['annual_fee']), reverse=True)
     
     # The best card is now the first one in the sorted list if any are eligible
     if eligible_cards_list and not best_card_details_dict: # Fallback if tie-breaking logic didn't set one

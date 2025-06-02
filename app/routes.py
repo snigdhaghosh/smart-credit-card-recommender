@@ -1,8 +1,12 @@
-from flask import render_template, request, jsonify, current_app # current_app to access app context
+from flask import (render_template, request, jsonify, current_app, Blueprint,
+                   redirect, url_for, flash, session)
 from . import db # From app package's __init__.py
-from .models import Card, PurchaseCategory # Import your models
+from .models import User, Card, PurchaseCategory, UserOwnedCard, db # Added User, UserOwnedCard, and db
 from .services import get_card_recommendation # Import your service function
 import json
+
+from functools import wraps # For login_required decorator
+
 
 # This is a simplified way to register routes directly on the app.
 # For larger apps, Flask Blueprints are recommended for better organization.
@@ -15,16 +19,145 @@ import json
 from flask import Blueprint
 main_routes = Blueprint('main', __name__)
 
+
+# --- Login Required Decorator ---
+def login_required(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if 'user_id' not in session:
+            flash('Please log in to access this page.', 'warning')
+            return redirect(url_for('main.login', next=request.url))
+        return f(*args, **kwargs)
+    return decorated_function
+
+
+
 @main_routes.route('/', methods=['GET'])
 def index():
     # categories = PurchaseCategory.query.all()
     # return render_template('index.html', categories=categories)
+    user = None
+    if 'user_id' in session:
+        user = User.query.get(session['user_id'])
     try:
         categories = PurchaseCategory.query.all()
     except Exception as e:
         current_app.logger.error(f"Error fetching categories for index page: {e}")
         categories = [] # Prevent error on template if DB query fails
-    return render_template('index.html', categories=categories)
+    return render_template('index.html', categories=categories, current_user=user)
+
+
+# --- User Registration ---
+@main_routes.route('/register', methods=['GET', 'POST'])
+def register():
+    if 'user_id' in session: # If already logged in, redirect to home
+        return redirect(url_for('main.index'))
+    if request.method == 'POST':
+        username = request.form.get('username')
+        email = request.form.get('email')
+        password = request.form.get('password')
+        error = None
+
+        if not username:
+            error = 'Username is required.'
+        elif not email:
+            error = 'Email is required.'
+        elif not password:
+            error = 'Password is required.'
+        elif User.query.filter_by(username=username).first() is not None:
+            error = f"User {username} is already registered."
+        elif User.query.filter_by(email=email).first() is not None:
+            error = f"Email {email} is already registered."
+
+        if error is None:
+            new_user = User(username=username, email=email)
+            new_user.set_password(password)
+            db.session.add(new_user)
+            db.session.commit()
+            flash('Registration successful! Please log in.', 'success')
+            return redirect(url_for('main.login'))
+        
+        flash(error, 'danger')
+
+    return render_template('register.html')
+
+
+# --- User Login ---
+@main_routes.route('/login', methods=['GET', 'POST'])
+def login():
+    if 'user_id' in session: # If already logged in, redirect to home
+        return redirect(url_for('main.index'))
+    if request.method == 'POST':
+        username_or_email = request.form.get('username_or_email')
+        password = request.form.get('password')
+        error = None
+        user = User.query.filter((User.username == username_or_email) | (User.email == username_or_email)).first()
+
+        if user is None:
+            error = 'Incorrect username/email.'
+        elif not user.check_password(password):
+            error = 'Incorrect password.'
+
+        if error is None:
+            session.clear()
+            session['user_id'] = user.id
+            session['username'] = user.username # Store username for display
+            flash('Login successful!', 'success')
+            next_page = request.args.get('next')
+            return redirect(next_page or url_for('main.index'))
+        
+        flash(error, 'danger')
+
+    return render_template('login.html')
+
+
+
+# --- User Logout ---
+@main_routes.route('/logout')
+def logout():
+    session.clear()
+    flash('You have been logged out.', 'info')
+    return redirect(url_for('main.index'))
+
+
+@main_routes.route('/my-cards', methods=['GET', 'POST'])
+@login_required # Protect this route
+def manage_owned_cards():
+    user_id = session['user_id'] # We know user is logged in due to decorator
+    user = User.query.get_or_404(user_id) # Get user object or 404 if not found
+
+    if request.method == 'POST':
+        # Get list of card IDs selected by the user from the form
+        selected_card_ids = request.form.getlist('owned_card_ids', type=int)
+        
+        # Clear existing owned cards for this user
+        UserOwnedCard.query.filter_by(user_id=user_id).delete()
+        
+        # Add the newly selected cards
+        for card_id in selected_card_ids:
+            card = Card.query.get(card_id)
+            if card: # Ensure card exists
+                user_owned_card = UserOwnedCard(user_id=user_id, card_id=card_id)
+                db.session.add(user_owned_card)
+        
+        try:
+            db.session.commit()
+            flash('Your owned cards have been updated successfully!', 'success')
+        except Exception as e:
+            db.session.rollback()
+            current_app.logger.error(f"Error updating owned cards for user {user_id}: {e}")
+            flash('There was an error updating your cards. Please try again.', 'danger')
+        
+        return redirect(url_for('main.manage_owned_cards'))
+
+    # GET request:
+    all_cards = Card.query.order_by(Card.name).all()
+    owned_card_ids = {uoc.card_id for uoc in UserOwnedCard.query.filter_by(user_id=user_id).all()}
+    
+    return render_template('manage_owned_cards.html', 
+                           all_cards=all_cards, 
+                           owned_card_ids=owned_card_ids,
+                           current_user=user)
 
 
 
@@ -41,8 +174,7 @@ def recommend():
                                error_message="No purchase category was selected. Please try again.", 
                                category_name="N/A")
 
-    # user_id = session.get('user_id') # For when user login is implemented
-    user_id = None  # Placeholder
+    user_id = session.get('user_id') # Get user_id from session
     
     # Call the updated service function
     best_card_result, eligible_cards_result = get_card_recommendation(category_name, user_id)
@@ -53,7 +185,8 @@ def recommend():
         "best_card": None,
         "eligible_cards": [],
         "info_message": None,
-        "error_message": None
+        "error_message": None,
+        "current_user": User.query.get(user_id) if user_id else None
     }
 
     if isinstance(best_card_result, dict) and "error" in best_card_result:

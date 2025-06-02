@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+
+{% block title %}My Owned Cards{% endblock %}
+
+{% block content %}
+<div class="manage-cards-container">
+    <h2>Manage Your Owned Credit Cards</h2>
+    <p>Select the cards you currently possess. This will help us provide more personalized recommendations.</p>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+                <div class="alert alert-{{ category }}">{{ message }}</div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+
+    {% if all_cards %}
+    <form method="post">
+        <div class="card-selection-list">
+            {% for card in all_cards %}
+            <div class="card-entry">
+                <input type="checkbox" 
+                       name="owned_card_ids" 
+                       value="{{ card.id }}" 
+                       id="card_{{ card.id }}"
+                       {% if card.id in owned_card_ids %}checked{% endif %}>
+                <label for="card_{{ card.id }}">
+                    {% if card.img_url %}<img src="{{ card.img_url }}" alt="{{ card.name }}" class="card-list-image">{% endif %}
+                    <strong>{{ card.name }}</strong> ({{ card.issuer }}) - Fee: ${{ card.annual_fee }}
+                </label>
+            </div>
+            {% endfor %}
+        </div>
+        <button type="submit" class="btn btn-primary" style="margin-top: 20px;">Save My Cards</button>
+    </form>
+    {% else %}
+    <p>No cards available in the system to select from yet.</p>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block scripts %}
+<style>
+.manage-cards-container { max-width: 800px; margin: auto; }
+.card-selection-list .card-entry {
+    display: flex;
+    align-items: center;
+    padding: 10px;
+    border-bottom: 1px solid #eee;
+}
+.card-selection-list .card-entry:last-child { border-bottom: none; }
+.card-selection-list input[type="checkbox"] { margin-right: 15px; transform: scale(1.2); }
+.card-selection-list label { display: flex; align-items: center; cursor: pointer; }
+.card-list-image { max-height: 30px; max-width: 47px; margin-right: 10px; border-radius: 2px; }
+</style>
+{% endblock %}

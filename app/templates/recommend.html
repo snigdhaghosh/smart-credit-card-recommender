@@ -26,7 +26,10 @@
                 {% if best_card.img_url %}
                     <img src="{{ best_card.img_url }}" alt="{{ best_card.name }}" class="card-image">
                 {% endif %}
-                <h4>{{ best_card.name }} ({{ best_card.issuer }})</h4>
+                <h4>
+                    {{ best_card.name }} ({{ best_card.issuer }})
+                    {% if best_card.is_owned %}<span class="badge owned-badge">You Own This!</span>{% endif %}
+                </h4>
                 <p>
                     <strong>Reward for {{ category_name }}:</strong> 
                     <span class="reward-rate">{{ (best_card.reward_rate_for_category * 100) | round(0) }}%</span>
@@ -49,7 +52,10 @@
                             {% if card_item.img_url %}
                                 <img src="{{ card_item.img_url }}" alt="{{ card_item.name }}" class="card-image">
                             {% endif %}
-                            <h4>{{ card_item.name }} ({{ card_item.issuer }})</h4>
+                            <h4>
+                                {{ card_item.name }} ({{ card_item.issuer }})
+                                {% if card_item.is_owned %}<span class="badge owned-badge">You Own This</span>{% endif %}
+                            </h4>
                             <p>
                                 <strong>Reward for {{ category_name }}:</strong> 
                                 <span class="reward-rate">{{ (card_item.reward_rate_for_category * 100) | round(0) }}%</span>
@@ -66,9 +72,29 @@
         {% elif not best_card and not info_message and not error_message %}
             <p>No specific card recommendations available for this category at the moment.</p>
         {% endif %}
-
         <p style="margin-top: 20px;">
             <a href="{{ url_for('main.index') }}" class="btn btn-primary">Try another category</a>
         </p>
     </div>
+{% endblock %}
+
+{% block scripts %}
+<style>
+.badge {
+    display: inline-block;
+    padding: .25em .4em;
+    font-size: 75%;
+    font-weight: 700;
+    line-height: 1;
+    text-align: center;
+    white-space: nowrap;
+    vertical-align: baseline;
+    border-radius: .25rem;
+}
+.owned-badge {
+    color: #fff;
+    background-color: #28a745; /* Green */
+    margin-left: 10px;
+}
+</style>
 {% endblock %}

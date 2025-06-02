@@ -7,10 +7,20 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
 </head>
 <body>
-    <nav>
+    <nav class="navbar"> {# Added a class for potential styling #}
         <a href="{{ url_for('main.index') }}">Home</a>
-        </nav>
-    <div class="container">
+        <div class="nav-links">
+        {% if session.user_id %}
+            <span class="nav-greeting">Hello, {{ session.username }}!</span>
+            <a href="{{ url_for('main.manage_owned_cards') }}" class="nav-link">My Cards</a> {# For Step 5 #}
+            <a href="{{ url_for('main.logout') }}" class="nav-link">Logout</a>
+        {% else %}
+            <a href="{{ url_for('main.register') }}" class="nav-link">Register</a>
+            <a href="{{ url_for('main.login') }}" class="nav-link">Login</a>
+        {% endif %}
+        </div>
+    </nav>
+     <div class="container">
         {% block content %}{% endblock %}
     </div>
     <script src="{{ url_for('static', filename='js/script.js') }}"></script>

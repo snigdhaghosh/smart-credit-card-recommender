@@ -1,14 +1,19 @@
 from . import db # Imports the db object created in __init__.py
 from datetime import datetime
+from werkzeug.security import generate_password_hash, check_password_hash
 
-# Example: User model (if you add user accounts)
 class User(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(80), unique=True, nullable=False)
-    email = db.Column(db.String(120), unique=True, nullable=False) # Example field
-    password_hash = db.Column(db.String(128)) # Store hashed passwords, not plain text!
-    # Relationship to UserOwnedCard
+    email = db.Column(db.String(120), unique=True, nullable=False)
+    password_hash = db.Column(db.String(256)) # Increased length for potentially longer hashes
     owned_cards = db.relationship('UserOwnedCard', backref='owner', lazy='dynamic')
+
+    def set_password(self, password):
+        self.password_hash = generate_password_hash(password)
+
+    def check_password(self, password):
+        return check_password_hash(self.password_hash, password)
 
     def __repr__(self):
         return f'<User {self.username}>'
@@ -46,6 +51,9 @@ class UserOwnedCard(db.Model):
 
     # Relationship to get Card details easily
     card = db.relationship('Card')
+
+    # Unique constraint to prevent duplicate entries
+    __table_args__ = (db.UniqueConstraint('user_id', 'card_id', name='_user_card_uc'),)
 
     def __repr__(self):
         return f'<UserOwnedCard User {self.user_id} owns Card {self.card_id}>'
