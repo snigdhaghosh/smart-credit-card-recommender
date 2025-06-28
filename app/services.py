@@ -12,6 +12,33 @@ def get_card_recommendation(purchase_category_name, user_id=None):
         current_app.logger.warn(f"Purchase category '{purchase_category_name}' not found in database.")
         return {"error": f"Purchase category '{purchase_category_name}' not found."}, []
 
+
+    owned_card_ids_set = set()
+    best_owned_card_reward_rate = 0.0
+    if user_id:
+        owned_cards_for_user = UserOwnedCard.query.filter_by(user_id=user_id).all()
+        owned_card_ids_set = {uoc.card_id for uoc in owned_cards_for_user}
+        
+        # Determine the user's best rate from their own cards for this category
+        for uoc in owned_cards_for_user:
+            card = uoc.card
+            if card and card.reward_rules:
+                try:
+                    rules = json.loads(card.reward_rules)
+                    specific_rate = 0.0
+                    for key, val in rules.items():
+                        if key.lower() == purchase_category_name.lower():
+                            specific_rate = val
+                            break
+                    general_rate = rules.get("All", 0.0)
+                    user_card_rate = max(specific_rate, general_rate)
+                    if user_card_rate > best_owned_card_reward_rate:
+                        best_owned_card_reward_rate = user_card_rate
+                except (json.JSONDecodeError, AttributeError):
+                    continue # Skip malformed or missing data
+
+
+
     best_card_details_dict = None
     highest_effective_reward_score = -1.0  # Allows any positive reward to be initially better
 
@@ -67,6 +94,14 @@ def get_card_recommendation(purchase_category_name, user_id=None):
         is_owned = card_from_db.id in owned_card_ids_set # Check if owned
 
 
+        comparison_note = None
+        if user_id and not is_owned and actual_reward_rate_for_category > best_owned_card_reward_rate:
+            if best_owned_card_reward_rate > 0:
+                comparison_note = f"This is better than the {best_owned_card_reward_rate*100:.0f}% you currently get from your best owned card for this category."
+            else:
+                comparison_note = "This card would fill a gap in your portfolio for this spending category."
+
+
         # Prepare card information for the eligible list
         card_info_for_list = {
             "id": card_from_db.id,
@@ -78,7 +113,8 @@ def get_card_recommendation(purchase_category_name, user_id=None):
             "annual_fee": card_from_db.annual_fee,
             "benefits": card_from_db.benefits_summary,
             "img_url": card_from_db.img_url,
-            "is_owned": is_owned # Add the owned flag
+            "is_owned": is_owned, # Add the owned flag
+            "comparison_note": comparison_note # Add the note to the dictionary
         }
         eligible_cards_list.append(card_info_for_list)
 
