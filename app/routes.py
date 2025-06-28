@@ -177,29 +177,30 @@ def recommend():
     user_id = session.get('user_id') # Get user_id from session
     
     # Call the updated service function
-    best_card_result, eligible_cards_result = get_card_recommendation(category_name, user_id)
+    best_card, eligible_cards, best_owned_card = get_card_recommendation(category_name, user_id)
 
     # Prepare context for the template
     template_context = {
         "category_name": category_name,
-        "best_card": None,
+        "best_card": best_card,
         "eligible_cards": [],
         "info_message": None,
         "error_message": None,
-        "current_user": User.query.get(user_id) if user_id else None
+        "current_user": User.query.get(user_id) if user_id else None,
+        "best_owned_card": best_owned_card
     }
 
-    if isinstance(best_card_result, dict) and "error" in best_card_result:
-        template_context["error_message"] = best_card_result["error"]
-    elif isinstance(best_card_result, dict) and "message" in best_card_result: # No specific best card, but a general message
-        template_context["info_message"] = best_card_result["message"]
+    if isinstance(best_card, dict) and "error" in best_card:
+        template_context["error_message"] = best_card["error"]
+    elif isinstance(best_card, dict) and "message" in best_card: # No specific best card, but a general message
+        template_context["info_message"] = best_card["message"]
         # eligible_cards_result might be an empty list or contain general cards if logic is expanded
-        template_context["eligible_cards"] = eligible_cards_result if isinstance(eligible_cards_result, list) else []
-    elif best_card_result: # We have a best card
-        template_context["best_card"] = best_card_result
-        template_context["eligible_cards"] = eligible_cards_result
-    elif isinstance(eligible_cards_result, dict) and "message" in eligible_cards_result: # No eligible cards, service returned a message in second param
-         template_context["info_message"] = eligible_cards_result["message"]
+        template_context["eligible_cards"] = eligible_cards if isinstance(eligible_cards, list) else []
+    elif best_card: # We have a best card
+        template_context["best_card"] = best_card
+        template_context["eligible_cards"] = eligible_cards
+    elif isinstance(eligible_cards, dict) and "message" in eligible_cards: # No eligible cards, service returned a message in second param
+         template_context["info_message"] = eligible_cards["message"]
     else: # Fallback for unexpected structure
         template_context["error_message"] = "Could not retrieve a recommendation at this time."
 
