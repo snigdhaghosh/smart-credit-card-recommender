@@ -1,31 +1,41 @@
 {% extends "base.html" %}
 
-{% block title %}Welcome to Smart Credit Recommender{% endblock %}
+{% block title %}Your Wallet, Optimized.{% endblock %}
 
 {% block content %}
-<div class="hero-section">
-    <h1>Find the Perfect Credit Card, Instantly.</h1>
-    <p class="subtitle">Select a spending category below and we'll recommend the best card to maximize your rewards.</p>
-</div>
-
-<div class="form-container">
-    <form action="{{ url_for('main.recommend') }}" method="post">
-        <div class="form-group">
-            <label for="category">I'm shopping for:</label>
-            <select name="category" id="category" class="form-control-lg">
-                {% for category in categories %}
-                    <option value="{{ category.name }}">{{ category.name }}</option>
-                {% else %}
-                    <option value="" disabled>No categories available</option>
-                {% endfor %}
-            </select>
-        </div>
-        <button type="submit" class="btn btn-primary btn-lg">Get Recommendation</button>
-    </form>
-</div>
-
-<hr>
-
-<div id="recommendation-result">
+<div class="landing-container">
+    <div class="landing-header">
+        <h1>Stop Guessing. Start Maximizing.</h1>
+        <p class="subtitle">Unlock the best credit card for every purchase. Instantly.</p>
     </div>
+
+    <div class="cta-split-container">
+        <div class="cta-panel guest-panel">
+            <h2>New Here?</h2>
+            <p>Let's find the perfect card for your spending habits. No account needed to start.</p>
+            <form action="{{ url_for('main.recommend') }}" method="post" class="cta-form">
+                <div class="form-group">
+                    <label for="category">Select a Purchase Category:</label>
+                    <select name="category" id="category" class="form-control-lg">
+                        {% for category in categories %}
+                            <option value="{{ category.name }}">{{ category.name }}</option>
+                        {% else %}
+                            <option value="" disabled>No categories available</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <button type="submit" class="btn btn-primary btn-block">Find My Best Card</button>
+            </form>
+        </div>
+
+        <div class="cta-panel user-panel">
+            <h2>Welcome Back</h2>
+            <p>Log in to access your saved cards and get personalized recommendations.</p>
+            <div class="cta-buttons">
+                <a href="{{ url_for('main.login') }}" class="btn btn-secondary btn-block">Login to Your Account</a>
+                <p class="subtle-link">or <a href="{{ url_for('main.register') }}">Create a New Account</a></p>
+            </div>
+        </div>
+    </div>
+</div>
 {% endblock %}

@@ -1,143 +1,139 @@
+/* --- Overall Body and Background --- */
 body {
-    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    background-color: #f0f4f8;
-    color: #333;
-    line-height: 1.6;
-    margin: 0;
-    padding: 0;
+    background-color: lab(15% 1.39 0.5); /* Very dark grey, near black */
+    color: #e0e0e0; /* Off-white for comfortable reading */
+    /* font-family: 'Segoe UI', 'Roboto', sans-serif; Modern font stack */
+    font-family: 'Comfortaa', sans-serif;
 }
 
-.container {
-    width: 80%;
-    max-width: 1200px;
-    margin: 0 auto;
-    background-color: #fff;
-    padding: 20px;
-    border-radius: 10px;
-    box-shadow: 0 4px 8px rgba(0,0,0,0.05);
+/* --- Main Navigation Bar --- */
+nav.navbar {
+    background-color: #1f1f1f; /* Slightly lighter than body */
+    border-bottom: 1px solid #333; /* Subtle separator */
+    box-shadow: 0 2px 8px rgba(0,0,0,0.3);
 }
 
+nav.navbar a {
+    color: #e0e0e0;
+    transition: color 0.2s ease-in-out;
+}
 
-nav {
-    background-color: #285f8f;
-    padding: 15px;
-    border-radius: 6px;
+nav.navbar a:hover, nav.navbar a.active {
+    background-color: transparent; /* Remove old hover effect */
+    color: #ffffff; /* Brighten text on hover */
+    text-shadow: 0 0 5px rgba(255, 255, 255, 0.5);
+}
+
+/* --- Landing Page Specific Styles --- */
+.landing-container {
+    background-color: transparent; /* The container is now just for layout */
+    box-shadow: none;
+    padding: 20px 0;
+}
+
+.landing-header {
+    text-align: center;
+    margin-bottom: 40px;
+}
+
+.landing-header h1 {
+    font-size: 3em;
+    font-weight: 700;
+    color: #ffffff;
+    margin-bottom: 0.2em;
+}
+
+.landing-header .subtitle {
+    font-size: 1.2em;
+    color: #a0a0a0; /* Lighter grey for subtitle */
+}
+
+/* --- Split Call-to-Action (CTA) Container --- */
+.cta-split-container {
     display: flex;
-    gap: 10px;
+    gap: 70px;
+    justify-content: center;
+    align-items: stretch; /* Makes panels equal height */
 }
 
-nav a {
-    color: #fff;
-    text-decoration: none;
-    padding: 5px 15px;
-    border-radius: 4px;
+.cta-panel {
+    background-color: #1e1e1e; /* Dark panel background */
+    border: 1px solid #333;
+    border-radius: 12px;
+    padding: 30px;
+    width: 45%;
+    max-width: 450px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
 }
 
-nav a:hover, nav a.active {
-    background-color: #1f4b72;
+.cta-panel h2 {
+    font-size: 1.8em;
+    margin-top: 0;
+    margin-bottom: 15px;
+    color: #ffffff;
 }
 
+.cta-panel p {
+    color: #b3b3b3;
+    flex-grow: 1; /* Pushes buttons to the bottom */
+}
+
+/* --- Form and Button Styling --- */
+.form-control-lg, .form-control {
+    background-color: #333;
+    color: #e0e0e0;
+    border: 1px solid #555;
+    padding: 12px 20px;
+}
 
 .btn {
-    display: inline-block;
-    padding: 8px 15px;
-    font-size: 14px;
-    border-radius: 6px;
-    text-decoration: none;
-    cursor: pointer;
-    transition: background-color 0.3s ease;
+    padding: 12px 20px;
+    font-weight: bold;
+    border-radius: 8px;
+    border: none;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    transition: all 0.3s ease;
+    width: 100%; /* Make buttons block-level */
 }
 
 .btn-primary {
-    background-color: #0069d9;
-    color: white;
+    background-color: #007bff; /* A vibrant blue for the primary action */
+    color: #ffffff;
 }
 
 .btn-primary:hover {
     background-color: #0056b3;
+    box-shadow: 0 0 15px rgba(0, 123, 255, 0.5);
+    transform: translateY(-2px);
 }
 
-.form-container {
-    background-color: #fff;
-    padding: 30px;
-    border-radius: 8px;
-    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+/* Add spacing above form submit buttons */
+.cta-form .btn {
+    margin-top: 20px;
 }
 
-.form-group label {
-    font-weight: bold;
+.btn-secondary {
+    background-color: #444; /* Grey for secondary action */
+    color: #e0e0e0;
 }
 
-.form-control {
-    border: 1px solid #ced4da;
-    border-radius: 4px;
-    padding: 8px;
+.btn-secondary:hover {
+    background-color: #555;
+    transform: translateY(-2px);
 }
 
-.form-control:focus {
-    border-color: #80bdff;
-    outline: none;
-    box-shadow: 0 0 5px rgba(0, 123, 255, 0.5);
-}
-
-
-.card-recommendation {
-    border-radius: 6px;
-    box-shadow: 0 3px 6px rgba(0,0,0,0.08);
-    padding: 20px;
-    margin-bottom: 20px;
-    transition: transform 0.2s;
-}
-
-.card-recommendation:hover {
-    transform: translateY(-5px);
-}
-
-.card-recommendation.best-card {
-    border-left: 5px solid #28a745;
-    background-color: #e8f5e9;
-}
-
-.card-image {
-    max-width: 120px;
-    border-radius: 4px;
-}
-
-.reward-rate {
-    color: #27ae60;
-}
-
-
-.alert {
-    padding: 12px;
-    border-radius: 6px;
-    margin-bottom: 20px;
+.subtle-link {
+    margin-top: 15px;
     font-size: 0.9em;
+    color: #888;
 }
 
-.alert-danger {
-    background-color: #f8d7da;
-    color: #721c24;
-    border: 1px solid #f5c6cb;
-}
-
-.alert-info {
-    background-color: #d1ecf1;
-    color: #0c5460;
-    border: 1px solid #bee5eb;
-}
-
-
-input[type="checkbox"], input[type="radio"] {
-    transform: scale(1.2);
-    margin-right: 8px;
-}
-
-
-.badge {
-    background-color: #28a745;
-    color: white;
-    border-radius: 4px;
-    padding: 2px 6px;
-    font-size: 0.8em;
+.subtle-link a {
+    color: #a0a0a0;
+    text-decoration: underline;
 }
