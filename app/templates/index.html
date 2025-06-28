@@ -1,24 +1,31 @@
 {% extends "base.html" %}
 
-{% block title %}Welcome{% endblock %}
+{% block title %}Welcome to Smart Credit Recommender{% endblock %}
 
 {% block content %}
-    <h1>Credit Card Recommender</h1>
+<div class="hero-section">
+    <h1>Find the Perfect Credit Card, Instantly.</h1>
+    <p class="subtitle">Select a spending category below and we'll recommend the best card to maximize your rewards.</p>
+</div>
+
+<div class="form-container">
     <form action="{{ url_for('main.recommend') }}" method="post">
-        <label for="category">Select Purchase Category:</label>
-        <select name="category" id="category">
-            {% for category in categories %}
-                <option value="{{ category.name }}">{{ category.name }}</option>
-            {% else %}
-                <option value="">No categories available</option>
-            {% endfor %}
-        </select>
-        <button type="submit">Get Recommendation</button>
-    </form>
-
-    <hr>
-    <!-- <p><a href="{{ url_for('main.add_sample_data') }}">Initialize Sample Card Data (Run Once)</a></p> -->
-
-    <div id="recommendation-result">
+        <div class="form-group">
+            <label for="category">I'm shopping for:</label>
+            <select name="category" id="category" class="form-control-lg">
+                {% for category in categories %}
+                    <option value="{{ category.name }}">{{ category.name }}</option>
+                {% else %}
+                    <option value="" disabled>No categories available</option>
+                {% endfor %}
+            </select>
         </div>
+        <button type="submit" class="btn btn-primary btn-lg">Get Recommendation</button>
+    </form>
+</div>
+
+<hr>
+
+<div id="recommendation-result">
+    </div>
 {% endblock %}
