@@ -1,6 +1,7 @@
 Flask
 Flask-SQLAlchemy
 Flask-Migrate # Optional, but good for DB schema changes
+Flask-CORS 
 python-dotenv # To load .flaskenv or .env files
 # Add other packages as you need them, e.g., requests for API calls
 # openai # If you use OpenAI's API later
