@@ -1,88 +1,72 @@
-import json
-from flask import current_app
-from .models import Card, UserOwnedCard, PurchaseCategory
+from .models import Card, UserCard, Category
+from flask_login import current_user
 
-def _get_reward_rate_for_category(rules, category_name):
-    """Helper function to calculate the reward rate for a specific category from a set of rules."""
-    try:
-        parsed_rules = json.loads(rules) if rules else {}
-        # Normalize for case-insensitive matching
-        normalized_category = category_name.lower()
-        
-        for key, value in parsed_rules.items():
-            if key.lower() == normalized_category:
-                return value
-        
-        # Return the general 'All' rate if no specific category is found
-        return parsed_rules.get("All", 0.0)
-    except (json.JSONDecodeError, AttributeError):
-        current_app.logger.error(f"Error parsing reward rules: {rules}")
+def _get_reward_rate_for_category(card, category_name):
+    """
+    Calculates the reward rate for a given card and purchase category.
+    This handles simple and complex reward rules stored in the card's JSON field.
+    """
+    if not card.reward_rules:
         return 0.0
 
-def get_card_recommendation(purchase_category_name, user_id=None):
-    """
-    Recommends the best card for a given purchase category with improved efficiency and clarity.
-    """
-    category_obj = PurchaseCategory.query.filter_by(name=purchase_category_name).first()
-    if not category_obj:
-        current_app.logger.warn(f"Purchase category '{purchase_category_name}' not found.")
-        return {"error": f"Purchase category '{purchase_category_name}' not found."}, [], None
+    # Direct category match (e.g., "Dining": 0.05)
+    if category_name in card.reward_rules:
+        return card.reward_rules[category_name]
+    
+    # Fallback to a general "All other purchases" rate if it exists
+    if 'All' in card.reward_rules:
+        return card.reward_rules['All']
+        
+    return 0.0
 
-    # Step 1: Get all necessary data in one go
-    all_cards = Card.query.all()
-    owned_card_ids = set()
+def get_recommendations(category_name, user_id=None):
+    """
+    Main service function to get card recommendations for a category.
+    """
+    # Find the category object from its name
+    category = Category.query.filter_by(name=category_name).first()
+    if not category:
+        raise ValueError(f"Category '{category_name}' not found.")
+
+    # Get all cards associated with that category
+    eligible_cards = category.cards.all()
+    
+    # Get the list of card IDs owned by the current user, if they are logged in
+    owned_card_ids = []
     if user_id:
-        owned_card_ids = {uoc.card_id for uoc in UserOwnedCard.query.filter_by(user_id=user_id).all()}
+        owned_card_ids = [uc.card_id for uc in UserCard.query.filter_by(user_id=user_id).all()]
 
-    if not all_cards:
-        return {"message": "No cards available in the system yet."}, [], None
-
-    # Step 2: Process all cards in a single loop
-    eligible_cards = []
-    best_owned_card_rate = 0.0
-
-    for card in all_cards:
-        rate = _get_reward_rate_for_category(card.reward_rules, purchase_category_name)
-        if rate <= 0:
-            continue
-
-        is_owned = card.id in owned_card_ids
-        if is_owned and rate > best_owned_card_rate:
-            best_owned_card_rate = rate
-
-        card_info = {
-            "id": card.id,
-            "name": card.name,
-            "issuer": card.issuer,
-            "reward_rate_for_category": rate,
-            "annual_fee": card.annual_fee,
-            "benefits": card.benefits_summary,
-            "img_url": card.img_url,
-            "is_owned": is_owned,
-            "reward_rules_summary_text": f"Offers {rate*100:.0f}% for {purchase_category_name}.",
-            "comparison_note": None # To be filled in later
-        }
-        eligible_cards.append(card_info)
-
-    if not eligible_cards:
-        return {"message": f"No cards found offering rewards for '{purchase_category_name}'."}, [], None
-
-    # Step 3: Post-processing and final selection
-    # Add comparison notes now that we have the best_owned_card_rate
+    recommendations = []
     for card in eligible_cards:
-        if user_id and not card['is_owned'] and card['reward_rate_for_category'] > best_owned_card_rate:
-            if best_owned_card_rate > 0:
-                card['comparison_note'] = f"This is better than the {best_owned_card_rate*100:.0f}% you get from your best card."
-            else:
-                card['comparison_note'] = "This could fill a gap in your wallet for this category."
+        reward_rate = _get_reward_rate_for_category(card, category_name)
+        recommendations.append({
+            'id': card.id,
+            'name': card.name,
+            'annual_fee': card.annual_fee,
+            'img_url': card.img_url,
+            'benefits': card.benefits,
+            'reward_rate_for_category': reward_rate,
+            'is_owned': card.id in owned_card_ids,
+            'comparison_note': '' # We can add comparison logic later
+        })
 
-    # Sort to find the best card and for display order
-    # Prioritize: Higher reward rate -> Owned -> Lower annual fee
-    eligible_cards.sort(key=lambda x: (x['reward_rate_for_category'], x['is_owned'], -x['annual_fee']), reverse=True)
+    # Sort by highest reward rate first, then by lowest annual fee as a tie-breaker
+    recommendations.sort(key=lambda x: (x['reward_rate_for_category'], -x['annual_fee']), reverse=True)
     
-    best_card = eligible_cards[0] if eligible_cards else None
-    
-    # Find the user's best owned card from the eligible list
-    best_owned_card = next((card for card in eligible_cards if card['is_owned']), None)
+    if not recommendations:
+        return {"best_option": None, "other_options": []}
 
-    return best_card, eligible_cards, best_owned_card
+    best_option = recommendations[0]
+    other_options = recommendations[1:]
+
+    # A simple comparison note for the best card
+    if len(other_options) > 0:
+        next_best_rate = other_options[0]['reward_rate_for_category']
+        if best_option['reward_rate_for_category'] > next_best_rate:
+            diff = (best_option['reward_rate_for_category'] - next_best_rate) * 100
+            best_option['comparison_note'] = f"Offers {diff:.0f}% more in this category than the next best option."
+
+    return {
+        "best_option": best_option,
+        "other_options": other_options
+    }
