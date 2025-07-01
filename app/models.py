@@ -22,12 +22,12 @@ class Card(db.Model):
     name = db.Column(db.String(120), index=True, unique=True)
     annual_fee = db.Column(db.Integer)
     img_url = db.Column(db.String(200))
-    benefits = db.Column(db.Text)
+    benefits_summary = db.Column(db.Text)
     # This stores the complex reward rules as a JSON string
     reward_rules = db.Column(db.JSON)
     
     # Foreign Key to link to the Category table
-    category_id = db.Column(db.Integer, db.ForeignKey('category.id'))
+    # category_id = db.Column(db.Integer, db.ForeignKey('category.id'))
 
     def __repr__(self):
         return f'<Card {self.name}>'
@@ -37,7 +37,7 @@ class Category(db.Model):
     name = db.Column(db.String(64), unique=True, index=True)
     
     # Relationship to access all cards within this category
-    cards = db.relationship('Card', backref='category', lazy='dynamic')
+    # cards = db.relationship('Card', backref='category', lazy='dynamic')
 
     def __repr__(self):
         return f'<Category {self.name}>'

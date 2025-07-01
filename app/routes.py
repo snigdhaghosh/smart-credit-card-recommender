@@ -7,29 +7,10 @@ from flask import (render_template, request, jsonify, current_app, Blueprint,
                    redirect, url_for, flash, session)
 from app.services import get_recommendations
 
-# No more render_template
-# bp = Blueprint('main', __name__) <-- The prefix is now handled in __init__.py
 bp = Blueprint('main', __name__)
 
-# # --- API for Card Recommendations ---
-# @bp.route('/recommend', methods=['POST'])
-# def recommend():
-#     data = request.get_json()
-#     category_name = data.get('category')
-#     # We will handle users later with auth tokens
-#     # For now, we can pass a user_id if we want, or handle anonymous users
-#     user_id = data.get('user_id', None) 
-
-#     if not category_name:
-#         return jsonify({"error": "Category is required"}), 400
-
-#     try:
-#         recommendations = get_recommendations(category_name, user_id)
-#         return jsonify(recommendations)
-#     except Exception as e:
-#         return jsonify({"error": str(e)}), 500
-
 @bp.route('/recommend', methods=['POST'])
+
 def recommend():
     """Receives a category and returns card recommendations as JSON."""
     data = request.get_json()
@@ -39,7 +20,7 @@ def recommend():
     category_name = data['category']
     user_id = session.get('user_id')
 
-    best_card, eligible_cards, best_owned_card = get_recommendations(category_name, user_id)
+    best_card, eligible_cards = get_recommendations(category_name, user_id)
 
     # Handle messages from the service if no cards are found
     if isinstance(best_card, dict):
@@ -48,14 +29,8 @@ def recommend():
     return jsonify({
         "best_card": best_card,
         "eligible_cards": eligible_cards,
-        "best_owned_card": best_owned_card
+        # "best_owned_card": best_owned_card
     })
-
-# --- API for Data ---
-# @bp.route('/categories', methods=['GET'])
-# def get_categories():
-#     categories = Category.query.all()
-#     return jsonify([{'id': c.id, 'name': c.name} for c in categories])
 
 @bp.route('/categories', methods=['GET'])
 def get_categories():
@@ -68,8 +43,6 @@ def get_categories():
         current_app.logger.error(f"Error fetching categories: {e}")
         return jsonify({"error": "Could not fetch categories"}), 500
 
-
-
 @bp.route('/cards', methods=['GET'])
 def get_cards():
     cards = Card.query.all()
@@ -79,7 +52,10 @@ def get_cards():
         'name': c.name, 
         'annual_fee': c.annual_fee,
         'img_url': c.img_url,
-        'benefits': c.benefits
+        'benefits': c.benefits_summary,
+        'reward_rules': c.reward_rules,
+        'category': c.category.name if c.category else None,
+        'is_owned': c.id in [uc.card_id for uc in current_user.owned_cards] if current_user.is_authenticated else False
     } for c in cards])
 
 # --- API for Authentication ---
@@ -113,19 +89,19 @@ def login():
 
 
 
-@bp.route('/seed-data', methods=['GET'])
-def seed_data():
-    """A simple route to add sample data for testing."""
-    categories_to_add = ["Dining", "Travel", "Groceries", "Gas", "Online Shopping"]
-    for cat_name in categories_to_add:
-        # Check if category already exists
-        if not Category.query.filter_by(name=cat_name).first():
-            new_cat = Category(name=cat_name)
-            db.session.add(new_cat)
+# @bp.route('/seed-data', methods=['GET'])
+# def seed_data():
+#     """A simple route to add sample data for testing."""
+#     categories_to_add = ["Dining", "Travel", "Groceries", "Gas", "Online Shopping"]
+#     for cat_name in categories_to_add:
+#         # Check if category already exists
+#         if not Category.query.filter_by(name=cat_name).first():
+#             new_cat = Category(name=cat_name)
+#             db.session.add(new_cat)
     
-    try:
-        db.session.commit()
-        return jsonify({"message": f"Successfully added {len(categories_to_add)} categories."})
-    except Exception as e:
-        db.session.rollback()
-        return jsonify({"error": str(e)}), 500
+#     try:
+#         db.session.commit()
+#         return jsonify({"message": f"Successfully added {len(categories_to_add)} categories."})
+#     except Exception as e:
+#         db.session.rollback()
+#         return jsonify({"error": str(e)}), 500
