@@ -10,7 +10,6 @@ from app.services import get_recommendations
 bp = Blueprint('main', __name__)
 
 @bp.route('/recommend', methods=['POST'])
-
 def recommend():
     """Receives a category and returns card recommendations as JSON."""
     data = request.get_json()
@@ -18,19 +17,22 @@ def recommend():
         return jsonify({"error": "A 'category' is required in the request body."}), 400
 
     category_name = data['category']
-    user_id = session.get('user_id')
+    # user_id = session.get('user_id') # User session logic can be integrated later
+    
+    # Correctly call the service, which returns a single dictionary
+    recommendations = get_recommendations(category_name)
 
-    best_card, eligible_cards = get_recommendations(category_name, user_id)
+    # Check if the service returned any valid recommendations
+    if not recommendations or not recommendations.get('best_option'):
+        return jsonify({"error": f"No recommendations available for the '{category_name}' category."}), 200
 
-    # Handle messages from the service if no cards are found
-    if isinstance(best_card, dict):
-        return jsonify(best_card), 200
-
+    # Prepare the JSON response in the format the frontend expects
+    # The frontend is looking for 'best_card' and 'eligible_cards'
     return jsonify({
-        "best_card": best_card,
-        "eligible_cards": eligible_cards,
-        # "best_owned_card": best_owned_card
+        "best_card": recommendations.get("best_option"),
+        "eligible_cards": recommendations.get("other_options"),
     })
+
 
 @bp.route('/categories', methods=['GET'])
 def get_categories():
@@ -89,19 +91,19 @@ def login():
 
 
 
-# @bp.route('/seed-data', methods=['GET'])
-# def seed_data():
-#     """A simple route to add sample data for testing."""
-#     categories_to_add = ["Dining", "Travel", "Groceries", "Gas", "Online Shopping"]
-#     for cat_name in categories_to_add:
-#         # Check if category already exists
-#         if not Category.query.filter_by(name=cat_name).first():
-#             new_cat = Category(name=cat_name)
-#             db.session.add(new_cat)
+@bp.route('/seed-data', methods=['GET'])
+def seed_data():
+    """A simple route to add sample data for testing."""
+    categories_to_add = ["Dining", "Travel", "Groceries", "Gas", "Online Shopping"]
+    for cat_name in categories_to_add:
+        # Check if category already exists
+        if not Category.query.filter_by(name=cat_name).first():
+            new_cat = Category(name=cat_name)
+            db.session.add(new_cat)
     
-#     try:
-#         db.session.commit()
-#         return jsonify({"message": f"Successfully added {len(categories_to_add)} categories."})
-#     except Exception as e:
-#         db.session.rollback()
-#         return jsonify({"error": str(e)}), 500
+    try:
+        db.session.commit()
+        return jsonify({"message": f"Successfully added {len(categories_to_add)} categories."})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"error": str(e)}), 500

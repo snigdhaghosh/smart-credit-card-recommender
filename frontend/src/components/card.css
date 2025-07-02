@@ -1,0 +1,80 @@
+/* frontend/src/components/Card.css */
+
+.card {
+  background-color: #ffffff;
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  margin: 1rem;
+  overflow: hidden;
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+  width: 300px;
+  display: flex;
+  flex-direction: column;
+}
+
+.card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.12);
+}
+
+.card.best-option {
+  border: 2px solid #4CAF50;
+  box-shadow: 0 8px 24px rgba(76, 175, 80, 0.2);
+}
+
+.best-option-badge {
+  background-color: #4CAF50;
+  color: white;
+  font-weight: bold;
+  padding: 0.5rem 1rem;
+  text-align: center;
+  font-size: 1rem;
+}
+
+.card-image {
+  width: 100%;
+  height: 180px;
+  object-fit: cover;
+}
+
+.card-body {
+  padding: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  flex-grow: 1;
+}
+
+.card-title {
+  font-size: 1.25rem;
+  font-weight: 600;
+  margin-bottom: 0.25rem;
+}
+
+.card-issuer {
+  font-size: 1rem;
+  color: #6c757d;
+  margin-bottom: 1rem;
+}
+
+.card-text {
+  font-size: 0.9rem;
+  color: #495057;
+  flex-grow: 1;
+  margin-bottom: 1rem;
+}
+
+.card-details {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  font-size: 0.9rem;
+}
+
+.card-details li {
+  margin-bottom: 0.5rem;
+}
+
+.owned-badge {
+  color: #28a745;
+  font-weight: bold;
+}

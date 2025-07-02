@@ -1,15 +1,16 @@
 import React, { useState, useEffect } from 'react';
+import axios from 'axios';
+import Card from './components/card'; // Import the new Card component
 import './App.css';
 
 function App() {
     const [categories, setCategories] = useState([]);
     const [selectedCategory, setSelectedCategory] = useState('');
-    const [recommendation, setRecommendation] = useState(null);
+    const [recommendation, setRecommendation] = useState({ best_card: null, other_options: [] });
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
 
 
-        // Fetch categories from the API when the component mounts
     useEffect(() => {
         // The API endpoint we created in Flask
         fetch('http://127.0.0.1:5000/api/categories')
@@ -19,35 +20,6 @@ function App() {
     }, []);
 
 
-    // // Fetch categories from Flask API when the component mounts
-    // useEffect(() => {
-    //     // The proxy will automatically send this to http://localhost:5000/api/categories
-    //     // fetch('/api/categories')
-    //     fetch('http://localhost:5000/api/categories', {
-    //         method: 'GET',
-    //         headers: { 'Content-Type': 'application/json' }
-    //     })
-    //     .then(response => {
-    //         // First, clone the response to log its text content
-    //             response.clone().text().then(text => {
-    //                 console.log("Server response text:", text);
-    //             });
-
-    //             // Now, try to parse it as JSON
-    //             if (!response.ok) {
-    //                 throw new Error(`HTTP error! Status: ${response.status}`);
-    //             }
-    //             return response.json(); // This is where the error is likely happening
-    //         })
-    //         .then(data => {
-    //             console.log("Successfully parsed JSON:", data);
-    //             setCategories(data);
-    //         })
-    //         .catch(err => {
-    //             console.error("Fetch Error:", err);
-    //             setError(err.message);
-    //         });
-    // }, []);
 
     const handleGetRecommendation = () => {
         if (!selectedCategory) {
@@ -56,7 +28,7 @@ function App() {
         }
         setLoading(true);
         setError('');
-        setRecommendation(null);
+        setRecommendation({ best_card: null, other_options: [] });
 
         // Call our new recommend API endpoint
         fetch('http://127.0.0.1:5000/api/recommend', {
@@ -71,7 +43,11 @@ function App() {
             if (data.error) {
                 setError(data.error);
             } else {
-                setRecommendation(data);
+                // The backend sends 'best_card' and 'eligible_cards'
+                setRecommendation({
+                    best_card: data.best_card,
+                    other_options: data.eligible_cards || []
+                });
             }
         })
         .catch(err => {
@@ -82,49 +58,51 @@ function App() {
         });
     };
 
-    return (
-        <div className="App">
-            <header className="App-header">
-                <h1>Credit Card Recommender</h1>
-                <div className="controls">
-                    <select
-                        value={selectedCategory}
-                        onChange={(e) => setSelectedCategory(e.target.value)}
-                    >
-                        <option value="">-- Select a Category --</option>
-                        {categories.map(cat => (
-                            <option key={cat} value={cat}>{cat}</option>
-                        ))}
-                    </select>
-                    <button onClick={handleGetRecommendation} disabled={loading}>
-                        {loading ? 'Getting...' : 'Get Recommendation'}
-                    </button>
-                </div>
+  return (
+    <div className="App">
+        <header className="App-header">
+            <h1>Smart Credit Card Recommender</h1>
+            <p>Select a category to find the best credit card for your needs.</p>
+        </header>
 
-                {error && <p className="error-message">{error}</p>}
-
-                {recommendation && (
-                    <div className="results">
-                        {recommendation.best_card && (
-                            <div className="card best-card">
-                                <h3>🏆 Best Option Found</h3>
-                                <h4>{recommendation.best_card.name}</h4>
-                                <p>Reward: {recommendation.best_card.reward_rate_for_category * 100}%</p>
-                            </div>
-                        )}
-                         {recommendation.best_owned_card && (!recommendation.best_card || recommendation.best_card.id !== recommendation.best_owned_card.id) && (
-                            <div className="card owned-card">
-                                <h3>✨ Your Best Owned Card</h3>
-                                <h4>{recommendation.best_owned_card.name}</h4>
-                                <p>Reward: {recommendation.best_owned_card.reward_rate_for_category * 100}%</p>
-                            </div>
-                        )}
-                    </div>
-                )}
-            </header>
+        <div className="controls-container">
+            <select
+                value={selectedCategory}
+                onChange={(e) => setSelectedCategory(e.target.value)}
+            >
+                <option value="">-- Select a Category --</option>
+                {categories.map(cat => (
+                    <option key={cat} value={cat}>{cat}</option>
+                ))}
+            </select>
+            <button onClick={handleGetRecommendation} className="recommend-button" disabled={loading}>
+                {loading ? 'Finding...' : 'Find My Card'}
+            </button>
         </div>
+
+        {error && <p className="error-message">{error}</p>}
+
+        <div className="recommendations-container">
+            {recommendation.best_card && (
+                <div className="best-option-section">
+                    <h2>Your Top Recommendation</h2>
+                    <Card card={recommendation.best_card} isBestOption={true} />
+                </div>
+            )}
+
+            {recommendation.other_options && recommendation.other_options.length > 0 && (
+                <div className="other-options-section">
+                    <h3>Other Great Cards to Consider</h3>
+                    <div className="cards-grid">
+                        {recommendation.other_options.map(card => (
+                        <Card key={card.id} card={card} isBestOption={false} />
+                        ))}
+                    </div>
+                </div>
+            )}
+        </div>
+    </div>
     );
 }
 
 export default App;
-
