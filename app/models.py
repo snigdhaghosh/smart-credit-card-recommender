@@ -20,6 +20,7 @@ class User(UserMixin, db.Model):
 class Card(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(120), index=True, unique=True)
+    issuer = db.Column(db.String(100))
     annual_fee = db.Column(db.Integer)
     img_url = db.Column(db.String(200))
     benefits_summary = db.Column(db.Text)
