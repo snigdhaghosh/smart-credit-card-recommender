@@ -18,9 +18,13 @@ def recommend():
 
     category_name = data['category']
     # user_id = session.get('user_id') # User session logic can be integrated later
+    user_id = current_user.id if current_user.is_authenticated else None
+
     
     # Correctly call the service, which returns a single dictionary
-    recommendations = get_recommendations(category_name)
+    # recommendations = get_recommendations(category_name)
+    recommendations = get_recommendations(category_name, user_id=user_id)
+
 
     # Check if the service returned any valid recommendations
     if not recommendations or not recommendations.get('best_option'):
@@ -44,6 +48,7 @@ def get_categories():
     except Exception as e:
         current_app.logger.error(f"Error fetching categories: {e}")
         return jsonify({"error": "Could not fetch categories"}), 500
+
 
 @bp.route('/cards', methods=['GET'])
 def get_cards():
@@ -77,6 +82,7 @@ def register():
     # In a real app, you might log them in and return an auth token
     return jsonify({"success": "User registered successfully", "user": {"id": new_user.id, "email": new_user.email}}), 201
 
+
 @bp.route('/login', methods=['POST'])
 def login():
     data = request.get_json()
@@ -90,20 +96,34 @@ def login():
     return jsonify({"error": "Invalid email or password"}), 401
 
 
+@bp.route('/status')
+def status():
+    if current_user.is_authenticated:
+        return jsonify({"logged_in": True, "user": {"id": current_user.id, "email": current_user.email}})
+    else:
+        return jsonify({"logged_in": False})
 
-@bp.route('/seed-data', methods=['GET'])
-def seed_data():
-    """A simple route to add sample data for testing."""
-    categories_to_add = ["Dining", "Travel", "Groceries", "Gas", "Online Shopping"]
-    for cat_name in categories_to_add:
-        # Check if category already exists
-        if not Category.query.filter_by(name=cat_name).first():
-            new_cat = Category(name=cat_name)
-            db.session.add(new_cat)
+
+@bp.route('/logout', methods=['POST'])
+@login_required
+def logout():
+    logout_user()
+    return jsonify({"success": "Logged out"})
+
+
+# @bp.route('/seed-data', methods=['GET'])
+# def seed_data():
+#     """A simple route to add sample data for testing."""
+#     categories_to_add = ["Dining", "Travel", "Groceries", "Gas", "Online Shopping"]
+#     for cat_name in categories_to_add:
+#         # Check if category already exists
+#         if not Category.query.filter_by(name=cat_name).first():
+#             new_cat = Category(name=cat_name)
+#             db.session.add(new_cat)
     
-    try:
-        db.session.commit()
-        return jsonify({"message": f"Successfully added {len(categories_to_add)} categories."})
-    except Exception as e:
-        db.session.rollback()
-        return jsonify({"error": str(e)}), 500
+#     try:
+#         db.session.commit()
+#         return jsonify({"message": f"Successfully added {len(categories_to_add)} categories."})
+#     except Exception as e:
+#         db.session.rollback()
+#         return jsonify({"error": str(e)}), 500
