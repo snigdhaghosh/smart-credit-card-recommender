@@ -71,11 +71,17 @@ def register():
     data = request.get_json()
     email = data.get('email')
     password = data.get('password')
+    username = data.get('username')
 
+    if User.query.filter_by(username=username).first():
+        return jsonify({"error": "Username already taken"}), 409
+    
     if User.query.filter_by(email=email).first():
         return jsonify({"error": "Email address already in use"}), 409
 
-    new_user = User(email=email, password_hash=generate_password_hash(password, method='pbkdf2:sha256'))
+    new_user = User(username=username, 
+                    email=email, 
+                    password_hash=generate_password_hash(password, method='pbkdf2:sha256'))
     db.session.add(new_user)
     db.session.commit()
 

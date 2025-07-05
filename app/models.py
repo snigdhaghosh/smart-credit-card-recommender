@@ -11,6 +11,7 @@ class User(UserMixin, db.Model):
     id = db.Column(db.Integer, primary_key=True)
     email = db.Column(db.String(120), index=True, unique=True)
     password_hash = db.Column(db.String(256))
+    username = db.Column(db.String(80), index=True, unique=True)
     # Relationship to access owned cards
     owned_cards = db.relationship('Card', secondary='user_card', lazy='dynamic', backref=db.backref('owners', lazy='dynamic'))
 

@@ -113,3 +113,22 @@ body {
   justify-content: center;
   gap: 1rem;
 }
+
+.toggle-auth-button {
+  background: none;
+  border: none;
+  color: #007bff;
+  cursor: pointer;
+  padding: 0.5rem;
+  margin-top: 1rem;
+  font-size: 0.9rem;
+}
+
+.toggle-auth-button:hover {
+  text-decoration: underline;
+}
+
+.success-message {
+  color: #28a745;
+  font-weight: bold;
+}

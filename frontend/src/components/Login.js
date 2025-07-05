@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 
-const Login = ({ onLogin }) => {
+const Login = ({ onLogin, toggleView }) => {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [error, setError] = useState('');
@@ -63,6 +63,9 @@ const Login = ({ onLogin }) => {
         <button type="submit">Login</button>
         {error && <p className="error-message">{error}</p>}
       </form>
+      <button onClick={toggleView} className="toggle-auth-button">
+        Don't have an account? Register
+      </button>
     </div>
   );
 };
